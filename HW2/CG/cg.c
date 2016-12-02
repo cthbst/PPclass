@@ -205,7 +205,7 @@ int main(int argc, char *argv[])
   //---------------------------------------------------------------------
   // set starting vector to (1, 1, .... 1)
   //---------------------------------------------------------------------
-  #pragma omp parallel for schedule(auto) private(i)
+  //#pragma omp parallel for schedule(auto) private(i)
   for (i = 0; i < NA+1; i++) {
     x[i] = 1.0;
   }
@@ -239,10 +239,11 @@ int main(int argc, char *argv[])
     //---------------------------------------------------------------------
     norm_temp1 = 0.0;
     norm_temp2 = 0.0;
-	#pragma omp parallel for schedule(auto) private(j) reduction(+:norm_temp1,norm_temp2)
+	// know no why can't parallel
+	//#pragma omp parallel for schedule(auto) private(j) reduction(+:norm_temp1,norm_temp2)
     for (j = 0; j < lastcol - firstcol + 1; j++) {
-      norm_temp1 = norm_temp1 + x[j]*z[j];
-      norm_temp2 = norm_temp2 + z[j]*z[j];
+      norm_temp1 += x[j]*z[j];
+      norm_temp2 += z[j]*z[j];
     }
 
     norm_temp2 = 1.0 / sqrt(norm_temp2);
@@ -351,7 +352,7 @@ static void conj_grad(int colidx[],
     //       on the Cray t3d - overall speed of code is 1.5 times faster.
 
 	
-	#pragma omp parallel for schedule(auto) private(j,k,sum)
+	#pragma omp parallel for private(j,k,sum)
     for (j = 0; j < lastrow - firstrow + 1; j++) {
       sum = 0.0;
       for (k = rowstr[j]; k < rowstr[j+1]; k++) {
@@ -364,7 +365,7 @@ static void conj_grad(int colidx[],
     // Obtain p.q
     //---------------------------------------------------------------------
     d = 0.0;
-	#pragma omp parallel for schedule(auto) reduction(+:d) private(j)
+	#pragma omp parallel for reduction(+:d) private(j)
     for (j = 0; j < lastcol - firstcol + 1; j++) {
       d += p[j]*q[j];
     }
@@ -558,6 +559,7 @@ static void sparse(double a[],
   //---------------------------------------------------------------------
   // ...count the number of triples in each row
   //---------------------------------------------------------------------
+  #pragma omp parallel for  
   for (j = 0; j < nrows+1; j++) {
     rowstr[j] = 0;
   }
@@ -665,7 +667,7 @@ static void sparse(double a[],
     nzloc[j] = nzloc[j] + nzloc[j-1];
   }
 
-  for (j = 0; j < nrows; j++) {
+  for (j = 0; j < nrows; ++j) {
     if (j > 0) {
       j1 = rowstr[j] - nzloc[j-1];
     } else {
@@ -673,10 +675,10 @@ static void sparse(double a[],
     }
     j2 = rowstr[j+1] - nzloc[j];
     nza = rowstr[j];
-    for (k = j1; k < j2; k++) {
+    for (k = j1; k < j2; ++k) {
       a[k] = a[nza];
       colidx[k] = colidx[nza];
-      nza = nza + 1;
+      ++nza;
     }
   }
   #pragma omp parallel for schedule(auto)
@@ -750,6 +752,7 @@ static void vecset(int n, double v[], int iv[], int *nzv, int i, double val)
   logical set;
 
   set = false;
+  #pragma omp parallel for  
   for (k = 0; k < *nzv; k++) {
     if (iv[k] == i) {
       v[k] = val;
